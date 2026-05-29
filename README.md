@@ -7,12 +7,34 @@ A full stack web-based IT Help Desk and Ticketing Management System for managing
 - Version Control: Git & GitHub
 - API Testing: Postman
 
-## Assignment 1 Deliverables
-- Requirement gathering document
-- Workflow diagrams
-- UI wireframes
-- Database schema
-- ERD diagram
-
 ## Project Status
-Week 1: Requirement analysis, planning, UI design, database schema, and ERD.
+
+## Week 1 Completed
+Requirement Analysis
+Project Planning
+UI Wireframes
+Database Schema Design
+ERD Diagram
+Workflow Diagrams
+
+## Week 2 Completed
+React Frontend Setup
+ASP.NET Core Web API Setup
+SQL Server Integration
+Entity Framework Core Configuration
+JWT Authentication
+Role-Based Login System
+Login API Development
+Frontend-Backend Integration
+Dashboard Navigation UI
+
+## Current UI Screens
+Login Page
+Dashboard Layout
+Sidebar Navigation
+Top Navigation Bar
+
+## In Progress
+Dashboard Pages
+Routing Implementation
+Ticket Management Module

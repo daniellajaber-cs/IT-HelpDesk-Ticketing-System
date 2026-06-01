@@ -1,4 +1,6 @@
+
 using backend.Data;
+using backend.DTOs;
 using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -22,8 +24,16 @@ namespace backend.Controllers
         }
 
         [HttpPost("register")]
-        public IActionResult Register(User user)
+        public IActionResult Register(RegisterDto registerDto)
         {
+            var user = new User
+            {
+                FullName = registerDto.FullName,
+                Email = registerDto.Email,
+                Password = registerDto.Password,
+                Role = registerDto.Role
+            };
+
             var existingUser = _context.Users.FirstOrDefault(u => u.Email == user.Email);
 
             if (existingUser != null)
@@ -38,11 +48,11 @@ namespace backend.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login(User loginUser)
+        public IActionResult Login(LoginDto loginDto)
         {
             var user = _context.Users.FirstOrDefault(u =>
-                u.Email == loginUser.Email &&
-                u.Password == loginUser.Password);
+                u.Email == loginDto.Email &&
+                u.Password == loginDto.Password);
 
             if (user == null)
             {

@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
 import './App.css'
 
-function App() {
+function LoginPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -32,7 +35,7 @@ function App() {
         localStorage.setItem('role', data.role)
         localStorage.setItem('fullName', data.fullName)
 
-        alert('Login successful')
+        navigate('/dashboard')
       } else {
         alert('Invalid email or password')
       }
@@ -161,6 +164,19 @@ function App() {
         </div>
       </section>
     </main>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

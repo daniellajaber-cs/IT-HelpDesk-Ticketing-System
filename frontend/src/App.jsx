@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import Dashboard from './pages/Dashboard'
 import './App.css'
+import CreateTicket from './pages/CreateTicket'
+import Dashboard from './pages/Dashboard'
+import Tickets from './pages/Tickets'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -173,7 +175,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
+
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/tickets" element={<Tickets />} />
+        <Route path="/create-ticket" element={<CreateTicket />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

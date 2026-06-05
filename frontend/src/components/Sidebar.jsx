@@ -13,8 +13,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-  { label: 'Tickets', icon: Ticket, to: '#' },
-  { label: 'Create Ticket', icon: PlusCircle, to: '#' },
+  { label: 'Tickets', icon: Ticket, to: '/tickets' },
+  { label: 'Create Ticket', icon: PlusCircle, to: '/create-ticket' },
   { label: 'Reports', icon: BarChart3, to: '#' },
   { label: 'Notifications', icon: Bell, to: '#' },
   { label: 'Knowledge Base', icon: BookOpen, to: '#' },
@@ -22,8 +22,38 @@ const menuItems = [
   { label: 'Settings', icon: Settings, to: '#' },
 ]
 
+const roleMenuItems = {
+  Admin: [
+    'Dashboard',
+    'Tickets',
+    'Create Ticket',
+    'Reports',
+    'Notifications',
+    'Knowledge Base',
+    'Users',
+    'Settings',
+  ],
+  Manager: ['Dashboard', 'Tickets', 'Reports', 'Notifications', 'Knowledge Base'],
+  'IT Support Agent': ['Dashboard', 'Assigned Tickets', 'Notifications', 'Knowledge Base'],
+  Employee: ['Dashboard', 'My Tickets', 'Create Ticket', 'Notifications', 'Knowledge Base'],
+}
+
+const labelOverrides = {
+  'Assigned Tickets': 'Tickets',
+  'My Tickets': 'Tickets',
+}
+
 function Sidebar() {
   const navigate = useNavigate()
+  const role = localStorage.getItem('role')
+  const allowedLabels = roleMenuItems[role] || roleMenuItems.Employee
+  const sidebarItems = allowedLabels
+    .map((label) => {
+      const item = menuItems.find((menuItem) => menuItem.label === (labelOverrides[label] || label))
+
+      return item ? { ...item, label } : null
+    })
+    .filter(Boolean)
 
   function handleLogout() {
     localStorage.removeItem('token')
@@ -44,7 +74,7 @@ function Sidebar() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Dashboard navigation">
-          {menuItems.map((item) => {
+          {sidebarItems.map((item) => {
             const Icon = item.icon
 
             return (

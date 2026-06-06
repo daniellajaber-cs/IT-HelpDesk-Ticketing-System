@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-route
 import './App.css'
 import CreateTicket from './pages/CreateTicket'
 import Dashboard from './pages/Dashboard'
+import TicketDetails from './pages/TicketDetails'
 import Tickets from './pages/Tickets'
 
 function LoginPage() {
@@ -33,9 +34,10 @@ function LoginPage() {
       if (response.ok) {
         const data = await response.json()
 
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('role', data.role)
+        localStorage.setItem('userId', data.userId)
         localStorage.setItem('fullName', data.fullName)
+        localStorage.setItem('role', data.role)
+        localStorage.setItem('token', data.token)
 
         navigate('/dashboard')
       } else {
@@ -178,6 +180,7 @@ function App() {
 
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tickets" element={<Tickets />} />
+        <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/create-ticket" element={<CreateTicket />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

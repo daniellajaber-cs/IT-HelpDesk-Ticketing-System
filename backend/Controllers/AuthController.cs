@@ -63,10 +63,10 @@ namespace backend.Controllers
 
             return Ok(new
             {
-                message = "Login successful",
-                token = token,
+                userId = user.Id,
+                fullName = user.FullName,
                 role = user.Role,
-                fullName = user.FullName
+                token = token
             });
         }
 

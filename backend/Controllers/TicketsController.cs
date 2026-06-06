@@ -39,9 +39,18 @@ namespace backend.Controllers
         [HttpPost]
         public IActionResult CreateTicket(CreateTicketDto request)
         {
+            int lastTicketId = 0;
+
+            if (_context.Tickets.Any())
+            {
+                lastTicketId = _context.Tickets.Max(t => t.Id);
+            }
+
+            int nextTicketNumber = lastTicketId + 1;
+
             var ticket = new Ticket
             {
-                TicketNumber = "TCK-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+                TicketNumber = $"TCK-{nextTicketNumber:D4}",
                 Title = request.Title,
                 Description = request.Description,
                 CreatedByUserId = request.CreatedByUserId,
@@ -82,6 +91,138 @@ namespace backend.Controllers
             _context.SaveChanges();
 
             return Ok(ticket);
+        }
+
+        [HttpPut("{id}/assign")]
+        public IActionResult AssignTicket(int id, AssignTicketDto request)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            ticket.AssignedToUserId = request.AssignedToUserId;
+            ticket.UpdatedAt = DateTime.Now;
+
+            _context.SaveChanges();
+
+            return Ok(ticket);
+        }
+
+        [HttpPut("{id}/status")]
+        public IActionResult UpdateTicketStatus(int id, UpdateTicketStatusDto request)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var status = _context.Statuses.FirstOrDefault(s => s.Id == request.StatusId);
+
+            ticket.StatusId = request.StatusId;
+            ticket.UpdatedAt = DateTime.Now;
+
+            if (status != null && status.Name.ToLower() == "resolved")
+            {
+                ticket.ResolvedAt = DateTime.Now;
+            }
+
+            if (status != null && status.Name.ToLower() == "closed")
+            {
+                ticket.ClosedAt = DateTime.Now;
+            }
+
+            _context.SaveChanges();
+
+            return Ok(ticket);
+        }
+
+        [HttpGet("{id}/comments")]
+        public IActionResult GetTicketComments(int id)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var comments = _context.TicketComments
+                .Where(comment => comment.TicketId == id)
+                .OrderBy(comment => comment.CreatedAt)
+                .Select(comment => new
+                {
+                    comment.Id,
+                    comment.TicketId,
+                    comment.UserId,
+                    comment.CommentText,
+                    comment.CreatedAt,
+                    UserFullName = _context.Users
+                        .Where(user => user.Id == comment.UserId)
+                        .Select(user => user.FullName)
+                        .FirstOrDefault(),
+                    UserRole = _context.Users
+                        .Where(user => user.Id == comment.UserId)
+                        .Select(user => user.Role)
+                        .FirstOrDefault()
+                })
+                .ToList();
+
+            return Ok(comments);
+        }
+
+        [HttpPost("{id}/comments")]
+        public IActionResult AddTicketComment(int id, AddTicketCommentDto request)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == request.UserId);
+
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            bool isAdmin = user.Role == "Admin";
+            bool isManager = user.Role == "Manager";
+            bool isTicketCreator = user.Role == "Employee" && ticket.CreatedByUserId == user.Id;
+            bool isAssignedAgent = user.Role == "IT Support Agent" && ticket.AssignedToUserId == user.Id;
+
+            if (!isAdmin && !isManager && !isTicketCreator && !isAssignedAgent)
+            {
+                return Unauthorized("You are not allowed to comment on this ticket.");
+            }
+
+            var comment = new TicketComment
+            {
+                TicketId = id,
+                UserId = request.UserId,
+                CommentText = request.CommentText,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.TicketComments.Add(comment);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                comment.Id,
+                comment.TicketId,
+                comment.UserId,
+                comment.CommentText,
+                comment.CreatedAt,
+                UserFullName = user.FullName,
+                UserRole = user.Role
+            });
         }
 
         [HttpDelete("{id}")]

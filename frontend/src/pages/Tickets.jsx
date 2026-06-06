@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, UserRound } from 'lucide-react'
+import { MoreVertical, Plus, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
@@ -12,11 +12,13 @@ function Tickets() {
   const [categories, setCategories] = useState([])
   const [priorities, setPriorities] = useState([])
   const [statuses, setStatuses] = useState([])
+  const [users, setUsers] = useState([])
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [agentFilter, setAgentFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [openActionsTicketId, setOpenActionsTicketId] = useState(null)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/Tickets`)
@@ -41,6 +43,23 @@ function Tickets() {
       .then((response) => response.json())
       .then((data) => setStatuses(Array.isArray(data) ? data : []))
       .catch((error) => console.log(error))
+
+    fetch(`${API_BASE_URL}/Users`)
+      .then((response) => response.json())
+      .then((data) => setUsers(Array.isArray(data) ? data : []))
+      .catch((error) => console.log(error))
+  }, [])
+
+  useEffect(() => {
+    function closeActionsMenu() {
+      setOpenActionsTicketId(null)
+    }
+
+    document.addEventListener('click', closeActionsMenu)
+
+    return () => {
+      document.removeEventListener('click', closeActionsMenu)
+    }
   }, [])
 
   function getLookupName(items, id, fallbackLabel) {
@@ -61,7 +80,17 @@ function Tickets() {
   }
 
   function getEmployee(ticket) {
-    return ticket.employeeName || ticket.createdByUser?.fullName || `Employee #${ticket.createdByUserId || '-'}`
+    const creator = users.find((user) => user.id === ticket.createdByUserId)
+
+    return (
+      ticket.employeeName ||
+      ticket.createdByUser?.fullName ||
+      ticket.createdByUser?.name ||
+      ticket.createdByUserFullName ||
+      ticket.createdByName ||
+      creator?.fullName ||
+      'Employee'
+    )
   }
 
   function getCategory(ticket) {
@@ -77,7 +106,17 @@ function Tickets() {
   }
 
   function getAgent(ticket) {
-    return ticket.agentName || ticket.assignedToUser?.fullName || ticket.assignedToName || ''
+    const assignedUser = users.find((user) => user.id === ticket.assignedToUserId)
+
+    return (
+      ticket.agentName ||
+      ticket.assignedToUser?.fullName ||
+      ticket.assignedToUser?.name ||
+      ticket.assignedToUserFullName ||
+      ticket.assignedToName ||
+      assignedUser?.fullName ||
+      ''
+    )
   }
 
   function getInitials(name) {
@@ -111,6 +150,7 @@ function Tickets() {
   }
 
   async function handleDelete(ticket) {
+    setOpenActionsTicketId(null)
     const confirmed = window.confirm('Delete this ticket?')
 
     if (!confirmed) {
@@ -149,6 +189,16 @@ function Tickets() {
   const visibleTickets = filteredTickets.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE)
   const emptyMessage =
     tickets.length === 0 ? 'No tickets found. Create a ticket to get started.' : 'No tickets match the selected filters.'
+
+  function handleView(ticket) {
+    setOpenActionsTicketId(null)
+    navigate(`/tickets/${ticket.id}`)
+  }
+
+  function handleEdit(ticket) {
+    setOpenActionsTicketId(null)
+    alert(`Edit ${getTicketId(ticket)}`)
+  }
 
   return (
     <DashboardLayout>
@@ -236,6 +286,17 @@ function Tickets() {
         <section className="queue-table-card">
           <div className="queue-table-wrap">
             <table className="queue-table">
+              <colgroup>
+                <col className="queue-col-id" />
+                <col className="queue-col-title" />
+                <col className="queue-col-employee" />
+                <col className="queue-col-category" />
+                <col className="queue-col-priority" />
+                <col className="queue-col-status" />
+                <col className="queue-col-agent" />
+                <col className="queue-col-created" />
+                <col className="queue-col-actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Ticket ID</th>
@@ -286,17 +347,33 @@ function Tickets() {
                         )}
                       </td>
                       <td>{formatDate(ticket.createdAt)}</td>
-                      <td>
-                        <div className="queue-actions">
-                          <button type="button" onClick={() => alert(`${getTicketId(ticket)}\n${getTitle(ticket)}`)}>
-                            View
+                      <td className="queue-actions-cell">
+                        <div className="queue-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="queue-actions-trigger"
+                            type="button"
+                            aria-label={`Open actions for ${getTicketId(ticket)}`}
+                            aria-expanded={openActionsTicketId === ticket.id}
+                            onClick={() =>
+                              setOpenActionsTicketId((currentId) => (currentId === ticket.id ? null : ticket.id))
+                            }
+                          >
+                            <MoreVertical size={16} strokeWidth={2.4} />
                           </button>
-                          <button type="button" onClick={() => alert(`Edit ${getTicketId(ticket)}`)}>
-                            Edit
-                          </button>
-                          <button className="danger" type="button" onClick={() => handleDelete(ticket)}>
-                            Delete
-                          </button>
+
+                          {openActionsTicketId === ticket.id && (
+                            <div className="queue-actions-menu">
+                              <button type="button" onClick={() => handleView(ticket)}>
+                                View
+                              </button>
+                              <button type="button" onClick={() => handleEdit(ticket)}>
+                                Edit
+                              </button>
+                              <button className="danger" type="button" onClick={() => handleDelete(ticket)}>
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 
 function CreateTicket() {
@@ -8,19 +8,44 @@ function CreateTicket() {
   const [priorityId, setPriorityId] = useState('')
   const [categories, setCategories] = useState([])
   const [priorities, setPriorities] = useState([])
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+  const attachmentInputRef = useRef(null)
+  const successTimerRef = useRef(null)
 
   useEffect(() => {
     fetch('http://localhost:5227/api/Categories')
       .then((response) => response.json())
-      .then((data) => setCategories(data))
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .catch((error) => console.log(error))
 
     fetch('http://localhost:5227/api/Priorities')
       .then((response) => response.json())
-      .then((data) => setPriorities(data))
+      .then((data) => setPriorities(Array.isArray(data) ? data : []))
+      .catch((error) => console.log(error))
+
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
+    }
   }, [])
+
+  function clearForm() {
+    setTitle('')
+    setDescription('')
+    setCategoryId('')
+    setPriorityId('')
+
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = ''
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setSuccessMessage('')
+    setErrorMessage('')
 
     const ticketData = {
       title: title,
@@ -39,21 +64,25 @@ function CreateTicket() {
     })
 
     if (response.ok) {
-      alert('Ticket created successfully')
-      setTitle('')
-      setDescription('')
-      setCategoryId('')
-      setPriorityId('')
+      clearForm()
+      setSuccessMessage('Ticket created successfully.')
+
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
+
+      successTimerRef.current = setTimeout(() => {
+        setSuccessMessage('')
+      }, 3500)
     } else {
-      alert('Failed to create ticket')
+      setErrorMessage('Failed to create ticket. Please try again.')
     }
   }
 
   function handleCancel() {
-    setTitle('')
-    setDescription('')
-    setCategoryId('')
-    setPriorityId('')
+    clearForm()
+    setSuccessMessage('')
+    setErrorMessage('')
   }
 
   return (
@@ -69,6 +98,9 @@ function CreateTicket() {
         </div>
 
         <form className="create-ticket-card" onSubmit={handleSubmit}>
+          {successMessage && <div className="ticket-success-message">{successMessage}</div>}
+          {errorMessage && <div className="ticket-error-message">{errorMessage}</div>}
+
           <div className="ticket-form-grid">
             <div className="input-group">
               <label htmlFor="ticket-title">Ticket Title</label>
@@ -130,7 +162,7 @@ function CreateTicket() {
             <div className="input-group ticket-attachment-field">
               <label htmlFor="ticket-attachments">Attachments</label>
               <label className="attachment-upload-box" htmlFor="ticket-attachments">
-                <input id="ticket-attachments" type="file" multiple />
+                <input id="ticket-attachments" type="file" multiple ref={attachmentInputRef} />
                 <span>Upload screenshots or files</span>
                 <small>Optional for now. PNG, JPG, PDF, or DOC files can be selected.</small>
               </label>

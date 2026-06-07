@@ -8,6 +8,8 @@ const PAGE_SIZE = 7
 
 function Tickets() {
   const navigate = useNavigate()
+  const role = localStorage.getItem('role')
+  const userId = Number(localStorage.getItem('userId'))
   const [tickets, setTickets] = useState([])
   const [categories, setCategories] = useState([])
   const [priorities, setPriorities] = useState([])
@@ -168,14 +170,29 @@ function Tickets() {
     }
   }
 
-  const statusOptions = statuses.length > 0 ? statuses.map((status) => status.name) : [...new Set(tickets.map(getStatus))]
-  const priorityOptions =
-    priorities.length > 0 ? priorities.map((priority) => priority.name) : [...new Set(tickets.map(getPriority))]
-  const categoryOptions =
-    categories.length > 0 ? categories.map((category) => category.name) : [...new Set(tickets.map(getCategory))]
-  const agentOptions = [...new Set(tickets.map((ticket) => getAgent(ticket)).filter(Boolean))]
+  const roleTickets = tickets.filter((ticket) => {
+    if (role === 'IT Support Agent') {
+      return ticket.assignedToUserId === userId
+    }
 
-  const filteredTickets = tickets.filter((ticket) => {
+    if (role === 'Employee') {
+      return ticket.createdByUserId === userId
+    }
+
+    return true
+  })
+
+  const canCreateTicket = role !== 'IT Support Agent'
+
+  const statusOptions =
+    statuses.length > 0 ? statuses.map((status) => status.name) : [...new Set(roleTickets.map(getStatus))]
+  const priorityOptions =
+    priorities.length > 0 ? priorities.map((priority) => priority.name) : [...new Set(roleTickets.map(getPriority))]
+  const categoryOptions =
+    categories.length > 0 ? categories.map((category) => category.name) : [...new Set(roleTickets.map(getCategory))]
+  const agentOptions = [...new Set(roleTickets.map((ticket) => getAgent(ticket)).filter(Boolean))]
+
+  const filteredTickets = roleTickets.filter((ticket) => {
     const matchesStatus = !statusFilter || getStatus(ticket) === statusFilter
     const matchesPriority = !priorityFilter || getPriority(ticket) === priorityFilter
     const matchesCategory = !categoryFilter || getCategory(ticket) === categoryFilter
@@ -187,8 +204,31 @@ function Tickets() {
   const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE))
   const activePage = Math.min(currentPage, totalPages)
   const visibleTickets = filteredTickets.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE)
-  const emptyMessage =
-    tickets.length === 0 ? 'No tickets found. Create a ticket to get started.' : 'No tickets match the selected filters.'
+  const emptyMessage = roleTickets.length === 0 ? 'No tickets found.' : 'No tickets match the selected filters.'
+
+  function canEditTicket(ticket) {
+    if (role === 'Admin' || role === 'Manager') {
+      return true
+    }
+
+    if (role === 'Employee') {
+      return ticket.assignedToUserId == null && getStatus(ticket) === 'Open'
+    }
+
+    return false
+  }
+
+  function canDeleteTicket(ticket) {
+    if (role === 'Admin') {
+      return true
+    }
+
+    if (role === 'Employee') {
+      return ticket.assignedToUserId == null && getStatus(ticket) === 'Open'
+    }
+
+    return false
+  }
 
   function handleView(ticket) {
     setOpenActionsTicketId(null)
@@ -209,10 +249,12 @@ function Tickets() {
             <p>Manage and respond to ongoing enterprise IT support requests.</p>
           </div>
 
-          <button className="queue-primary-button" type="button" onClick={() => navigate('/create-ticket')}>
-            <Plus size={16} strokeWidth={2.4} />
-            <span>New Ticket</span>
-          </button>
+          {canCreateTicket && (
+            <button className="queue-primary-button" type="button" onClick={() => navigate('/create-ticket')}>
+              <Plus size={16} strokeWidth={2.4} />
+              <span>New Ticket</span>
+            </button>
+          )}
         </div>
 
         <section className="queue-filter-bar">
@@ -366,12 +408,16 @@ function Tickets() {
                               <button type="button" onClick={() => handleView(ticket)}>
                                 View
                               </button>
-                              <button type="button" onClick={() => handleEdit(ticket)}>
-                                Edit
-                              </button>
-                              <button className="danger" type="button" onClick={() => handleDelete(ticket)}>
-                                Delete
-                              </button>
+                              {canEditTicket(ticket) && (
+                                <button type="button" onClick={() => handleEdit(ticket)}>
+                                  Edit
+                                </button>
+                              )}
+                              {canDeleteTicket(ticket) && (
+                                <button className="danger" type="button" onClick={() => handleDelete(ticket)}>
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

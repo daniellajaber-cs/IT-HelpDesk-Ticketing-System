@@ -2,6 +2,7 @@ using backend.Data;
 using backend.DTOs;
 using backend.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -63,6 +64,19 @@ namespace backend.Controllers
             _context.Tickets.Add(ticket);
             _context.SaveChanges();
 
+            var history = new TicketHistory
+            {
+                TicketId = ticket.Id,
+                Action = "Ticket Created",
+                OldValue = null,
+                NewValue = ticket.Title,
+                PerformedByUserId = ticket.CreatedByUserId,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.TicketHistories.Add(history);
+            _context.SaveChanges();
+
             return Ok(ticket);
         }
 
@@ -103,9 +117,39 @@ namespace backend.Controllers
                 return NotFound("Ticket not found");
             }
 
+            string oldAssignedUserName = "Unassigned";
+
+            if (ticket.AssignedToUserId != null)
+            {
+                var oldAssignedUser = _context.Users.FirstOrDefault(u => u.Id == ticket.AssignedToUserId);
+
+                if (oldAssignedUser != null)
+                {
+                    oldAssignedUserName = oldAssignedUser.FullName;
+                }
+            }
+
+            var newAssignedUser = _context.Users.FirstOrDefault(u => u.Id == request.AssignedToUserId);
+
+            if (newAssignedUser == null)
+            {
+                return BadRequest("Assigned user not found");
+            }
+
             ticket.AssignedToUserId = request.AssignedToUserId;
             ticket.UpdatedAt = DateTime.Now;
 
+            var history = new TicketHistory
+            {
+                TicketId = ticket.Id,
+                Action = "Ticket Assigned",
+                OldValue = oldAssignedUserName,
+                NewValue = newAssignedUser.FullName,
+                PerformedByUserId = GetCurrentUserId() ?? request.AssignedToUserId,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.TicketHistories.Add(history);
             _context.SaveChanges();
 
             return Ok(ticket);
@@ -121,24 +165,59 @@ namespace backend.Controllers
                 return NotFound("Ticket not found");
             }
 
+            var oldStatus = _context.Statuses.FirstOrDefault(s => s.Id == ticket.StatusId);
             var status = _context.Statuses.FirstOrDefault(s => s.Id == request.StatusId);
+
+            if (status == null)
+            {
+                return BadRequest("Status not found");
+            }
 
             ticket.StatusId = request.StatusId;
             ticket.UpdatedAt = DateTime.Now;
 
-            if (status != null && status.Name.ToLower() == "resolved")
+            if (status.Name.ToLower() == "resolved")
             {
                 ticket.ResolvedAt = DateTime.Now;
             }
 
-            if (status != null && status.Name.ToLower() == "closed")
+            if (status.Name.ToLower() == "closed")
             {
                 ticket.ClosedAt = DateTime.Now;
             }
 
+            var history = new TicketHistory
+            {
+                TicketId = ticket.Id,
+                Action = "Status Changed",
+                OldValue = oldStatus != null ? oldStatus.Name : "Unknown",
+                NewValue = status.Name,
+                PerformedByUserId = GetCurrentUserId() ?? ticket.CreatedByUserId,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.TicketHistories.Add(history);
             _context.SaveChanges();
 
             return Ok(ticket);
+        }
+
+        [HttpGet("{id}/history")]
+        public IActionResult GetTicketHistory(int id)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var history = _context.TicketHistories
+                .Where(item => item.TicketId == id)
+                .OrderByDescending(item => item.CreatedAt)
+                .ToList();
+
+            return Ok(history);
         }
 
         [HttpGet("{id}/comments")]
@@ -211,6 +290,15 @@ namespace backend.Controllers
             };
 
             _context.TicketComments.Add(comment);
+            _context.TicketHistories.Add(new TicketHistory
+            {
+                TicketId = ticket.Id,
+                Action = "Comment Added",
+                OldValue = null,
+                NewValue = comment.CommentText,
+                PerformedByUserId = comment.UserId,
+                CreatedAt = DateTime.Now
+            });
             _context.SaveChanges();
 
             return Ok(new
@@ -244,6 +332,18 @@ namespace backend.Controllers
             _context.SaveChanges();
 
             return Ok("Ticket deleted successfully");
+        }
+
+        private int? GetCurrentUserId()
+        {
+            string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (int.TryParse(userId, out int parsedUserId))
+            {
+                return parsedUserId;
+            }
+
+            return null;
         }
     }
 }

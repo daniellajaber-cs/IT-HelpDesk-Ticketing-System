@@ -13,6 +13,7 @@ function TicketDetails() {
   const [statuses, setStatuses] = useState([])
   const [users, setUsers] = useState([])
   const [comments, setComments] = useState([])
+  const [history, setHistory] = useState([])
   const [commentText, setCommentText] = useState('')
   const [commentMessage, setCommentMessage] = useState('')
   const [commentError, setCommentError] = useState('')
@@ -29,6 +30,7 @@ function TicketDetails() {
   const [errorMessage, setErrorMessage] = useState('')
   const [refreshCount, setRefreshCount] = useState(0)
   const [commentsRefreshCount, setCommentsRefreshCount] = useState(0)
+  const [historyRefreshCount, setHistoryRefreshCount] = useState(0)
   const userRole = localStorage.getItem('role') || ''
   const currentUserId = localStorage.getItem('userId') || ''
 
@@ -82,6 +84,16 @@ function TicketDetails() {
         setComments([])
       })
   }, [id, commentsRefreshCount])
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/Tickets/${id}/history`)
+      .then((response) => response.json())
+      .then((data) => setHistory(Array.isArray(data) ? data : []))
+      .catch((error) => {
+        console.log(error)
+        setHistory([])
+      })
+  }, [id, historyRefreshCount])
 
   function getLookupName(items, itemId, fallbackLabel) {
     const item = items.find((lookupItem) => lookupItem.id === itemId)
@@ -168,6 +180,7 @@ function TicketDetails() {
     if (response.ok) {
       setAssignMessage('Ticket assigned successfully.')
       setRefreshCount((currentCount) => currentCount + 1)
+      setHistoryRefreshCount((currentCount) => currentCount + 1)
     } else {
       setAssignError('Failed to assign ticket. Please try again.')
     }
@@ -199,6 +212,7 @@ function TicketDetails() {
     if (response.ok) {
       setStatusMessage('Ticket status updated successfully.')
       setRefreshCount((currentCount) => currentCount + 1)
+      setHistoryRefreshCount((currentCount) => currentCount + 1)
     } else {
       setStatusError('Failed to update ticket status. Please try again.')
     }
@@ -240,6 +254,7 @@ function TicketDetails() {
       setCommentText('')
       setCommentMessage('Comment added successfully.')
       setCommentsRefreshCount((currentCount) => currentCount + 1)
+      setHistoryRefreshCount((currentCount) => currentCount + 1)
     } else {
       const message = await response.text()
       setCommentError(message || 'Failed to add comment. Please try again.')
@@ -423,7 +438,21 @@ function TicketDetails() {
 
               <section className="ticket-details-card history-card">
                 <h3>Activity History</h3>
-                <div className="ticket-history-item">Ticket created.</div>
+                {history.length === 0 && <p className="ticket-details-empty">No activity history yet.</p>}
+
+                {history.map((historyItem) => (
+                  <div className="ticket-history-item" key={historyItem.id}>
+                    <strong>{historyItem.action}</strong>
+
+                    {historyItem.oldValue && historyItem.newValue && (
+                      <p>
+                        {historyItem.oldValue} &rarr; {historyItem.newValue}
+                      </p>
+                    )}
+
+                    <time>{formatDate(historyItem.createdAt)}</time>
+                  </div>
+                ))}
               </section>
             </div>
           </>

@@ -11,10 +11,12 @@ namespace backend.Controllers
     public class TicketsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public TicketsController(AppDbContext context)
+        public TicketsController(AppDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -88,11 +90,6 @@ namespace backend.Controllers
             if (ticket == null)
             {
                 return NotFound("Ticket not found");
-            }
-
-            if (ticket.StatusId == 2)
-            {
-                return BadRequest("Cannot edit ticket because it is already In Progress.");
             }
 
             ticket.Title = request.Title;
@@ -313,6 +310,317 @@ namespace backend.Controllers
             });
         }
 
+        [HttpGet("{id}/attachments")]
+        public IActionResult GetTicketAttachments(int id)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var attachments = _context.TicketAttachments
+                .Where(attachment => attachment.TicketId == id)
+                .OrderByDescending(attachment => attachment.UploadedAt)
+                .Select(attachment => new
+                {
+                    attachment.Id,
+                    attachment.TicketId,
+                    attachment.UploadedByUserId,
+                    attachment.FileName,
+                    attachment.FilePath,
+                    attachment.FileType,
+                    attachment.FileSize,
+                    attachment.UploadedAt,
+                    UploadedByFullName = _context.Users
+                        .Where(user => user.Id == attachment.UploadedByUserId)
+                        .Select(user => user.FullName)
+                        .FirstOrDefault()
+                })
+                .ToList();
+
+            return Ok(attachments);
+        }
+
+        [HttpPost("{id}/attachments")]
+        public async Task<IActionResult> UploadTicketAttachment(int id, [FromForm] IFormFile file, [FromForm] int uploadedByUserId)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == uploadedByUserId);
+
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("Please choose a file to upload.");
+            }
+
+            if (file.Length > int.MaxValue)
+            {
+                return BadRequest("File is too large.");
+            }
+
+            string webRootPath = _environment.WebRootPath;
+
+            if (string.IsNullOrWhiteSpace(webRootPath))
+            {
+                webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            }
+
+            string uploadFolder = Path.Combine(webRootPath, "uploads");
+            Directory.CreateDirectory(uploadFolder);
+
+            string originalFileName = Path.GetFileName(file.FileName);
+            string storedFileName = $"{Guid.NewGuid()}_{originalFileName}";
+            string savedFilePath = Path.Combine(uploadFolder, storedFileName);
+
+            using (var stream = new FileStream(savedFilePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var attachment = new TicketAttachment
+            {
+                TicketId = id,
+                UploadedByUserId = uploadedByUserId,
+                FileName = originalFileName,
+                FilePath = $"/uploads/{storedFileName}",
+                FileType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+                FileSize = (int)file.Length,
+                UploadedAt = DateTime.Now
+            };
+
+            _context.TicketAttachments.Add(attachment);
+            _context.TicketHistories.Add(new TicketHistory
+            {
+                TicketId = ticket.Id,
+                Action = "Attachment Uploaded",
+                OldValue = null,
+                NewValue = attachment.FileName,
+                PerformedByUserId = uploadedByUserId,
+                CreatedAt = DateTime.Now
+            });
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                attachment.Id,
+                attachment.TicketId,
+                attachment.UploadedByUserId,
+                attachment.FileName,
+                attachment.FilePath,
+                attachment.FileType,
+                attachment.FileSize,
+                attachment.UploadedAt,
+                UploadedByFullName = user.FullName
+            });
+        }
+
+        [HttpGet("{id}/action-logs")]
+        public IActionResult GetTicketActionLogs(int id)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var actionLogs = _context.ActivityLogs
+                .Where(log => log.TicketId == id)
+                .OrderByDescending(log => log.LogDate)
+                .ThenByDescending(log => log.CreatedAt)
+                .Select(log => new
+                {
+                    log.Id,
+                    log.TicketId,
+                    log.UserId,
+                    UserFullName = _context.Users
+                        .Where(user => user.Id == log.UserId)
+                        .Select(user => user.FullName)
+                        .FirstOrDefault(),
+                    Type = log.Action,
+                    Description = log.Details,
+                    log.DurationHours,
+                    log.LogDate,
+                    log.CreatedAt
+                })
+                .ToList();
+
+            return Ok(actionLogs);
+        }
+
+        [HttpPost("{id}/action-logs")]
+        public IActionResult AddTicketActionLog(int id, AddActionLogDto request)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == request.UserId);
+
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            bool canAddActionLog =
+                user.Role == "Admin" ||
+                user.Role == "Manager" ||
+                (user.Role == "IT Support Agent" && ticket.AssignedToUserId == user.Id);
+
+            if (!canAddActionLog)
+            {
+                return Unauthorized("You are not allowed to add action logs to this ticket.");
+            }
+
+            if (request.DurationHours <= 0)
+            {
+                return BadRequest("Duration hours must be greater than 0.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Description))
+            {
+                return BadRequest("Description is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Type))
+            {
+                return BadRequest("Type is required.");
+            }
+
+            var actionLog = new ActivityLog
+            {
+                TicketId = id,
+                UserId = request.UserId,
+                Action = request.Type,
+                Details = request.Description,
+                DurationHours = request.DurationHours,
+                LogDate = request.LogDate,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.ActivityLogs.Add(actionLog);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                actionLog.Id,
+                actionLog.TicketId,
+                actionLog.UserId,
+                UserFullName = user.FullName,
+                Type = actionLog.Action,
+                Description = actionLog.Details,
+                actionLog.DurationHours,
+                actionLog.LogDate,
+                actionLog.CreatedAt
+            });
+        }
+
+        [HttpGet("{id}/internal-notes")]
+        public IActionResult GetTicketInternalNotes(int id, [FromQuery] int userId)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            if (!CanAccessInternalNotes(user))
+            {
+                return Unauthorized("You are not allowed to view internal notes.");
+            }
+
+            var notes = _context.InternalNotes
+                .Where(note => note.TicketId == id)
+                .OrderByDescending(note => note.CreatedAt)
+                .Select(note => new
+                {
+                    note.Id,
+                    note.TicketId,
+                    note.UserId,
+                    UserFullName = _context.Users
+                        .Where(userItem => userItem.Id == note.UserId)
+                        .Select(userItem => userItem.FullName)
+                        .FirstOrDefault(),
+                    note.Note,
+                    note.CreatedAt
+                })
+                .ToList();
+
+            return Ok(notes);
+        }
+
+        [HttpPost("{id}/internal-notes")]
+        public IActionResult AddTicketInternalNote(int id, AddInternalNoteDto request)
+        {
+            var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
+
+            if (ticket == null)
+            {
+                return NotFound("Ticket not found");
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Id == request.UserId);
+
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            if (!CanAccessInternalNotes(user))
+            {
+                return Unauthorized("You are not allowed to add internal notes.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Note))
+            {
+                return BadRequest("Note is required.");
+            }
+
+            var note = new InternalNote
+            {
+                TicketId = id,
+                UserId = request.UserId,
+                Note = request.Note,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.InternalNotes.Add(note);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                note.Id,
+                note.TicketId,
+                note.UserId,
+                UserFullName = user.FullName,
+                note.Note,
+                note.CreatedAt
+            });
+        }
+
         [HttpDelete("{id}")]
         public IActionResult DeleteTicket(int id)
         {
@@ -344,6 +652,11 @@ namespace backend.Controllers
             }
 
             return null;
+        }
+
+        private static bool CanAccessInternalNotes(User user)
+        {
+            return user.Role == "Admin" || user.Role == "Manager" || user.Role == "IT Support Agent";
         }
     }
 }

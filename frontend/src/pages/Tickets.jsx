@@ -212,7 +212,7 @@ function Tickets() {
     }
 
     if (role === 'Employee') {
-      return ticket.assignedToUserId == null && getStatus(ticket) === 'Open'
+      return ticket.createdByUserId === userId && ticket.assignedToUserId == null && getStatus(ticket) === 'Open'
     }
 
     return false
@@ -237,7 +237,7 @@ function Tickets() {
 
   function handleEdit(ticket) {
     setOpenActionsTicketId(null)
-    alert(`Edit ${getTicketId(ticket)}`)
+    navigate(`/tickets/${ticket.id}/edit`)
   }
 
   return (

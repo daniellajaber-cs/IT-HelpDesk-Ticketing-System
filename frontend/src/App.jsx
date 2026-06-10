@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-route
 import './App.css'
 import CreateTicket from './pages/CreateTicket'
 import Dashboard from './pages/Dashboard'
+import EditTicket from './pages/EditTicket'
 import TicketDetails from './pages/TicketDetails'
 import Tickets from './pages/Tickets'
 
@@ -180,6 +181,7 @@ function App() {
 
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tickets" element={<Tickets />} />
+        <Route path="/tickets/:id/edit" element={<EditTicket />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/create-ticket" element={<CreateTicket />} />
         <Route path="*" element={<Navigate to="/" replace />} />

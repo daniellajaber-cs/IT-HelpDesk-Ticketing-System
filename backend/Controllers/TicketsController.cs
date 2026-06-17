@@ -10,6 +10,23 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     public class TicketsController : ControllerBase
     {
+        private const long MaxAttachmentFileSize = 10 * 1024 * 1024;
+        private const string InvalidAttachmentTypeMessage = "Invalid file type. Only PNG, JPG, JPEG, PDF, DOC, DOCX, XLS, XLSX, PPT, and PPTX files are allowed.";
+        private const string AttachmentSizeExceededMessage = "File size exceeds the maximum allowed size of 10 MB.";
+        private static readonly HashSet<string> AllowedAttachmentExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".ppt",
+            ".pptx"
+        };
+
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
 
@@ -134,6 +151,13 @@ namespace backend.Controllers
             }
 
             ticket.AssignedToUserId = request.AssignedToUserId;
+
+            CreateNotification(
+    request.AssignedToUserId,
+    ticket.Id,
+    "Ticket Assigned",
+    $"Ticket {ticket.TicketNumber} has been assigned to you."
+);
             ticket.UpdatedAt = DateTime.Now;
 
             var history = new TicketHistory
@@ -194,6 +218,23 @@ namespace backend.Controllers
             };
 
             _context.TicketHistories.Add(history);
+          
+          CreateNotification(
+    ticket.CreatedByUserId,
+    ticket.Id,
+    "Ticket Status Updated",
+    $"Ticket {ticket.TicketNumber} status changed from {oldStatus?.Name ?? "Unknown"} to {status.Name}."
+);
+
+if (ticket.AssignedToUserId != null)
+{
+    CreateNotification(
+        ticket.AssignedToUserId.Value,
+        ticket.Id,
+        "Ticket Status Updated",
+        $"Ticket {ticket.TicketNumber} status changed from {oldStatus?.Name ?? "Unknown"} to {status.Name}."
+    );
+}
             _context.SaveChanges();
 
             return Ok(ticket);
@@ -296,6 +337,14 @@ namespace backend.Controllers
                 PerformedByUserId = comment.UserId,
                 CreatedAt = DateTime.Now
             });
+
+CreateNotification(
+    ticket.CreatedByUserId,
+    ticket.Id,
+    "New Comment",
+    $"A new comment was added to Ticket {ticket.TicketNumber}."
+);
+
             _context.SaveChanges();
 
             return Ok(new
@@ -344,8 +393,12 @@ namespace backend.Controllers
         }
 
         [HttpPost("{id}/attachments")]
-        public async Task<IActionResult> UploadTicketAttachment(int id, [FromForm] IFormFile file, [FromForm] int uploadedByUserId)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadTicketAttachment(int id, [FromForm] UploadAttachmentDto request)
         {
+            var file = request.File;
+            var uploadedByUserId = request.UploadedByUserId;
+
             var ticket = _context.Tickets.FirstOrDefault(t => t.Id == id);
 
             if (ticket == null)
@@ -365,9 +418,17 @@ namespace backend.Controllers
                 return BadRequest("Please choose a file to upload.");
             }
 
-            if (file.Length > int.MaxValue)
+            string originalFileName = Path.GetFileName(file.FileName);
+            string fileExtension = Path.GetExtension(originalFileName);
+
+            if (string.IsNullOrWhiteSpace(fileExtension) || !AllowedAttachmentExtensions.Contains(fileExtension))
             {
-                return BadRequest("File is too large.");
+                return BadRequest(InvalidAttachmentTypeMessage);
+            }
+
+            if (file.Length > MaxAttachmentFileSize)
+            {
+                return BadRequest(AttachmentSizeExceededMessage);
             }
 
             string webRootPath = _environment.WebRootPath;
@@ -380,7 +441,6 @@ namespace backend.Controllers
             string uploadFolder = Path.Combine(webRootPath, "uploads");
             Directory.CreateDirectory(uploadFolder);
 
-            string originalFileName = Path.GetFileName(file.FileName);
             string storedFileName = $"{Guid.NewGuid()}_{originalFileName}";
             string savedFilePath = Path.Combine(uploadFolder, storedFileName);
 
@@ -410,6 +470,15 @@ namespace backend.Controllers
                 PerformedByUserId = uploadedByUserId,
                 CreatedAt = DateTime.Now
             });
+
+CreateNotification(
+    ticket.CreatedByUserId,
+    ticket.Id,
+    "New Attachment",
+    $"A new attachment was uploaded to Ticket {ticket.TicketNumber}."
+);
+
+
             _context.SaveChanges();
 
             return Ok(new
@@ -424,6 +493,36 @@ namespace backend.Controllers
                 attachment.UploadedAt,
                 UploadedByFullName = user.FullName
             });
+        }
+
+        [HttpGet("attachments/{attachmentId}/download")]
+        public IActionResult DownloadTicketAttachment(int attachmentId)
+        {
+            var attachment = _context.TicketAttachments.FirstOrDefault(item => item.Id == attachmentId);
+
+            if (attachment == null)
+            {
+                return NotFound("Attachment not found");
+            }
+
+            string webRootPath = _environment.WebRootPath;
+
+            if (string.IsNullOrWhiteSpace(webRootPath))
+            {
+                webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            }
+
+            string storedFileName = Path.GetFileName(attachment.FilePath);
+            string filePath = Path.Combine(webRootPath, "uploads", storedFileName);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound("Attachment file not found");
+            }
+
+            string contentType = string.IsNullOrWhiteSpace(attachment.FileType) ? "application/octet-stream" : attachment.FileType;
+
+            return PhysicalFile(filePath, contentType, attachment.FileName);
         }
 
         [HttpGet("{id}/action-logs")]
@@ -658,5 +757,22 @@ namespace backend.Controllers
         {
             return user.Role == "Admin" || user.Role == "Manager" || user.Role == "IT Support Agent";
         }
+private void CreateNotification(int userId, int? ticketId, string title, string message)
+{
+    var notification = new Notification
+    {
+        UserId = userId,
+        TicketId = ticketId,
+        Title = title,
+        Message = message,
+        IsRead = false,
+        CreatedAt = DateTime.Now
+    };
+
+    _context.Notifications.Add(notification);
+}
+
+
     }
+
 }

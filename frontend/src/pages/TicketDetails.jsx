@@ -3,6 +3,53 @@ import { useNavigate, useParams } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
 const API_BASE_URL = 'http://localhost:5227/api'
+const MAX_ATTACHMENT_FILE_SIZE = 10 * 1024 * 1024
+const ALLOWED_ATTACHMENT_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+const INVALID_ATTACHMENT_TYPE_MESSAGE =
+  'Invalid file type. Only PNG, JPG, JPEG, PDF, DOC, DOCX, XLS, XLSX, PPT, and PPTX files are allowed.'
+const ATTACHMENT_SIZE_EXCEEDED_MESSAGE = 'File size exceeds the maximum allowed size of 10 MB.'
+
+function getFileExtension(fileName) {
+  const extensionStartIndex = fileName.lastIndexOf('.')
+
+  if (extensionStartIndex === -1) {
+    return ''
+  }
+
+  return fileName.slice(extensionStartIndex).toLowerCase()
+}
+
+function validateAttachmentFile(file) {
+  if (!file) {
+    return 'Please choose a file first.'
+  }
+
+  if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name))) {
+    return INVALID_ATTACHMENT_TYPE_MESSAGE
+  }
+
+  if (file.size > MAX_ATTACHMENT_FILE_SIZE) {
+    return ATTACHMENT_SIZE_EXCEEDED_MESSAGE
+  }
+
+  return ''
+}
+
+function formatFileSize(bytes) {
+  if (!bytes && bytes !== 0) {
+    return '-'
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 function TicketDetails() {
   const { id } = useParams()
@@ -331,14 +378,29 @@ function TicketDetails() {
   function handleAttachmentChange(e) {
     const file = e.target.files && e.target.files.length > 0 ? e.target.files[0] : null
 
-    setSelectedAttachment(file)
     setAttachmentMessage('')
-    setAttachmentError('')
+
+    if (!file) {
+      setSelectedAttachment(null)
+      setAttachmentError('')
+      return
+    }
+
+    const validationError = validateAttachmentFile(file)
+
+    if (validationError) {
+      e.target.value = ''
+    }
+
+    setAttachmentError(validationError)
+    setSelectedAttachment(validationError ? null : file)
   }
 
   async function handleUploadAttachment() {
-    if (!selectedAttachment) {
-      setAttachmentError('Please choose a file first.')
+    const validationError = validateAttachmentFile(selectedAttachment)
+
+    if (validationError) {
+      setAttachmentError(validationError)
       setAttachmentMessage('')
       return
     }
@@ -752,6 +814,7 @@ function TicketDetails() {
                         id="ticket-attachment-file"
                         type="file"
                         key={selectedAttachment ? selectedAttachment.name : 'empty-attachment'}
+                        accept={ALLOWED_ATTACHMENT_EXTENSIONS.join(',')}
                         onChange={handleAttachmentChange}
                       />
 
@@ -773,11 +836,23 @@ function TicketDetails() {
 
                     {attachments.map((attachment) => (
                       <article className="ticket-attachment-item" key={attachment.id}>
-                        <div>
+                        <div className="ticket-attachment-main">
                           <strong>{attachment.fileName}</strong>
-                          <span>Uploaded by {attachment.uploadedByFullName || 'SupportOps User'}</span>
+                          <div className="ticket-attachment-meta">
+                            <span>{attachment.fileType || 'application/octet-stream'}</span>
+                            <span>{formatFileSize(attachment.fileSize)}</span>
+                            <span>Uploaded {formatDate(attachment.uploadedAt)}</span>
+                            <span>By {attachment.uploadedByFullName || 'SupportOps User'}</span>
+                          </div>
                         </div>
-                        <time>{formatDate(attachment.uploadedAt)}</time>
+                        <a
+                          className="ticket-attachment-download"
+                          href={`${API_BASE_URL}/Tickets/attachments/${attachment.id}/download`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open/Download
+                        </a>
                       </article>
                     ))}
                   </div>

@@ -1,6 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 
+const API_BASE_URL = 'http://localhost:5227/api'
+const MAX_ATTACHMENT_FILE_SIZE = 10 * 1024 * 1024
+const ALLOWED_ATTACHMENT_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+const INVALID_ATTACHMENT_TYPE_MESSAGE =
+  'Invalid file type. Only PNG, JPG, JPEG, PDF, DOC, DOCX, XLS, XLSX, PPT, and PPTX files are allowed.'
+const ATTACHMENT_SIZE_EXCEEDED_MESSAGE = 'File size exceeds the maximum allowed size of 10 MB.'
+
+function getFileExtension(fileName) {
+  const extensionStartIndex = fileName.lastIndexOf('.')
+
+  if (extensionStartIndex === -1) {
+    return ''
+  }
+
+  return fileName.slice(extensionStartIndex).toLowerCase()
+}
+
+function validateAttachmentFile(file) {
+  if (!file) {
+    return ''
+  }
+
+  if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name))) {
+    return INVALID_ATTACHMENT_TYPE_MESSAGE
+  }
+
+  if (file.size > MAX_ATTACHMENT_FILE_SIZE) {
+    return ATTACHMENT_SIZE_EXCEEDED_MESSAGE
+  }
+
+  return ''
+}
+
 function CreateTicket() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -8,18 +41,20 @@ function CreateTicket() {
   const [priorityId, setPriorityId] = useState('')
   const [categories, setCategories] = useState([])
   const [priorities, setPriorities] = useState([])
+  const [selectedAttachment, setSelectedAttachment] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const attachmentInputRef = useRef(null)
   const successTimerRef = useRef(null)
+  const currentUserId = localStorage.getItem('userId') || '4'
 
   useEffect(() => {
-    fetch('http://localhost:5227/api/Categories')
+    fetch(`${API_BASE_URL}/Categories`)
       .then((response) => response.json())
       .then((data) => setCategories(Array.isArray(data) ? data : []))
       .catch((error) => console.log(error))
 
-    fetch('http://localhost:5227/api/Priorities')
+    fetch(`${API_BASE_URL}/Priorities`)
       .then((response) => response.json())
       .then((data) => setPriorities(Array.isArray(data) ? data : []))
       .catch((error) => console.log(error))
@@ -36,10 +71,27 @@ function CreateTicket() {
     setDescription('')
     setCategoryId('')
     setPriorityId('')
+    setSelectedAttachment(null)
 
     if (attachmentInputRef.current) {
       attachmentInputRef.current.value = ''
     }
+  }
+
+  function handleAttachmentChange(e) {
+    const file = e.target.files && e.target.files.length > 0 ? e.target.files[0] : null
+    const validationError = validateAttachmentFile(file)
+
+    setSuccessMessage('')
+    setErrorMessage(validationError)
+
+    if (validationError) {
+      setSelectedAttachment(null)
+      e.target.value = ''
+      return
+    }
+
+    setSelectedAttachment(file)
   }
 
   async function handleSubmit(e) {
@@ -47,15 +99,22 @@ function CreateTicket() {
     setSuccessMessage('')
     setErrorMessage('')
 
+    const attachmentValidationError = validateAttachmentFile(selectedAttachment)
+
+    if (attachmentValidationError) {
+      setErrorMessage(attachmentValidationError)
+      return
+    }
+
     const ticketData = {
       title: title,
       description: description,
-      createdByUserId: 4,
+      createdByUserId: Number(currentUserId),
       categoryId: Number(categoryId),
       priorityId: Number(priorityId),
     }
 
-    const response = await fetch('http://localhost:5227/api/Tickets', {
+    const response = await fetch(`${API_BASE_URL}/Tickets`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -64,6 +123,25 @@ function CreateTicket() {
     })
 
     if (response.ok) {
+      const newTicket = await response.json()
+
+      if (selectedAttachment) {
+        const formData = new FormData()
+        formData.append('file', selectedAttachment)
+        formData.append('uploadedByUserId', ticketData.createdByUserId)
+
+        const uploadResponse = await fetch(`${API_BASE_URL}/Tickets/${newTicket.id}/attachments`, {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!uploadResponse.ok) {
+          const message = await uploadResponse.text()
+          setErrorMessage(message || 'Ticket created, but attachment upload failed.')
+          return
+        }
+      }
+
       clearForm()
       setSuccessMessage('Ticket created successfully.')
 
@@ -162,9 +240,15 @@ function CreateTicket() {
             <div className="input-group ticket-attachment-field">
               <label htmlFor="ticket-attachments">Attachments</label>
               <label className="attachment-upload-box" htmlFor="ticket-attachments">
-                <input id="ticket-attachments" type="file" multiple ref={attachmentInputRef} />
-                <span>Upload screenshots or files</span>
-                <small>Optional for now. PNG, JPG, PDF, or DOC files can be selected.</small>
+                <input
+                  id="ticket-attachments"
+                  type="file"
+                  accept={ALLOWED_ATTACHMENT_EXTENSIONS.join(',')}
+                  ref={attachmentInputRef}
+                  onChange={handleAttachmentChange}
+                />
+                <span>{selectedAttachment ? selectedAttachment.name : 'Upload screenshots or files'}</span>
+                <small>PNG, JPG, JPEG, PDF, DOC, DOCX, XLS, XLSX, PPT, and PPTX files up to 10 MB.</small>
               </label>
             </div>
           </div>

@@ -16,7 +16,7 @@ const menuItems = [
   { label: 'Tickets', icon: Ticket, to: '/tickets' },
   { label: 'Create Ticket', icon: PlusCircle, to: '/create-ticket' },
   { label: 'Reports', icon: BarChart3, to: '#' },
-  { label: 'Notifications', icon: Bell, to: '#' },
+  { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Knowledge Base', icon: BookOpen, to: '#' },
   { label: 'Users', icon: Users, to: '#' },
   { label: 'Settings', icon: Settings, to: '#' },
@@ -80,7 +80,7 @@ function Sidebar() {
             return (
               <NavLink
                 className={({ isActive }) =>
-                  item.to === '/dashboard' && isActive
+                  item.to !== '#' && isActive
                     ? 'sidebar-link active'
                     : 'sidebar-link'
                 }

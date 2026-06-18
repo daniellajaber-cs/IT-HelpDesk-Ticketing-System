@@ -100,5 +100,60 @@ public IActionResult GetRecentTickets()
 
     return Ok(recentTickets);
 }
+
+[HttpGet("top-agents")]
+public IActionResult GetTopAgents()
+{
+    var completedStatusIds = _context.Statuses
+        .Where(status => status.Name == "Resolved" || status.Name == "Closed")
+        .Select(status => status.Id)
+        .ToList();
+
+    var topAgents = _context.Users
+        .Where(user => user.Role == "IT Support Agent")
+        .Select(agent => new
+        {
+            id = agent.Id,
+            fullName = agent.FullName,
+            resolvedTickets = _context.Tickets.Count(ticket =>
+                ticket.AssignedToUserId == agent.Id &&
+                completedStatusIds.Contains(ticket.StatusId))
+        })
+        .OrderByDescending(agent => agent.resolvedTickets)
+        .ThenBy(agent => agent.fullName)
+        .Take(4)
+        .ToList();
+
+    return Ok(topAgents);
+}
+
+[HttpGet("recent-activity")]
+public IActionResult GetRecentActivity()
+{
+    var recentActivity = _context.TicketHistories
+        .OrderByDescending(history => history.CreatedAt)
+        .Take(5)
+        .Select(history => new
+        {
+            id = history.Id,
+            ticketId = history.TicketId,
+            ticketNumber = _context.Tickets
+                .Where(ticket => ticket.Id == history.TicketId)
+                .Select(ticket => ticket.TicketNumber)
+                .FirstOrDefault(),
+            action = history.Action,
+            oldValue = history.OldValue,
+            newValue = history.NewValue,
+            createdAt = history.CreatedAt,
+            performedByUserId = history.PerformedByUserId,
+            performedByUserName = _context.Users
+                .Where(user => user.Id == history.PerformedByUserId)
+                .Select(user => user.FullName)
+                .FirstOrDefault()
+        })
+        .ToList();
+
+    return Ok(recentActivity);
+}
     }
 }

@@ -32,5 +32,11 @@ namespace backend.Data
         public DbSet<ActivityLog> ActivityLogs { get; set; }
 
         public DbSet<InternalNote> InternalNotes { get; set; }
+   
+    public DbSet<KnowledgeBaseCategory> KnowledgeBaseCategories { get; set; }
+
+        public DbSet<KnowledgeBaseArticle> KnowledgeBaseArticles { get; set; }
+
+        public DbSet<KnowledgeBaseVideo> KnowledgeBaseVideos { get; set; }
     }
 }

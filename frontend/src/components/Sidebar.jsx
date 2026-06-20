@@ -15,7 +15,7 @@ const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'Tickets', icon: Ticket, to: '/tickets' },
   { label: 'Create Ticket', icon: PlusCircle, to: '/create-ticket' },
-  { label: 'Reports', icon: BarChart3, to: '#' },
+  { label: 'Reports', icon: BarChart3, to: '/reports' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Knowledge Base', icon: BookOpen, to: '#' },
   { label: 'Users', icon: Users, to: '#' },

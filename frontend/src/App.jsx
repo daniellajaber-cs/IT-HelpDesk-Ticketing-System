@@ -5,6 +5,7 @@ import CreateTicket from './pages/CreateTicket'
 import Dashboard from './pages/Dashboard'
 import EditTicket from './pages/EditTicket'
 import Notifications from './pages/Notifications'
+import Reports from './pages/Reports'
 import TicketDetails from './pages/TicketDetails'
 import Tickets from './pages/Tickets'
 
@@ -186,6 +187,7 @@ function App() {
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/create-ticket" element={<CreateTicket />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

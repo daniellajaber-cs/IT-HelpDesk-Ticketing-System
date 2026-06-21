@@ -4,6 +4,7 @@ import './App.css'
 import CreateTicket from './pages/CreateTicket'
 import Dashboard from './pages/Dashboard'
 import EditTicket from './pages/EditTicket'
+import KnowledgeBase from './pages/KnowledgeBase'
 import Notifications from './pages/Notifications'
 import Reports from './pages/Reports'
 import TicketDetails from './pages/TicketDetails'
@@ -188,6 +189,7 @@ function App() {
         <Route path="/create-ticket" element={<CreateTicket />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/knowledge-base" element={<KnowledgeBase />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

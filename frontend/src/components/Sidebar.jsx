@@ -17,7 +17,7 @@ const menuItems = [
   { label: 'Create Ticket', icon: PlusCircle, to: '/create-ticket' },
   { label: 'Reports', icon: BarChart3, to: '/reports' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
-  { label: 'Knowledge Base', icon: BookOpen, to: '#' },
+  { label: 'Knowledge Base', icon: BookOpen, to: '/knowledge-base' },
   { label: 'Users', icon: Users, to: '#' },
   { label: 'Settings', icon: Settings, to: '#' },
 ]

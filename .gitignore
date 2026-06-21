@@ -1,0 +1,11 @@
+backend/bin/
+backend/obj/
+bin/
+obj/
+.vs/
+node_modules/
+dist/
+.env
+*.user
+*.suo
+*.log

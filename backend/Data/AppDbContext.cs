@@ -38,5 +38,14 @@ namespace backend.Data
         public DbSet<KnowledgeBaseArticle> KnowledgeBaseArticles { get; set; }
 
         public DbSet<KnowledgeBaseVideo> KnowledgeBaseVideos { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<User>()
+                .Property(user => user.IsActive)
+                .HasDefaultValue(true);
+        }
     }
 }

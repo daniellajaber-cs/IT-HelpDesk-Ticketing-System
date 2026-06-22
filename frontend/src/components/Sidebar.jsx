@@ -18,7 +18,7 @@ const menuItems = [
   { label: 'Reports', icon: BarChart3, to: '/reports' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Knowledge Base', icon: BookOpen, to: '/knowledge-base' },
-  { label: 'Users', icon: Users, to: '#' },
+  { label: 'Users', icon: Users, to: '/users' },
   { label: 'Settings', icon: Settings, to: '#' },
 ]
 

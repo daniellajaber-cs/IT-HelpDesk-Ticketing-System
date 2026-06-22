@@ -9,6 +9,7 @@ import Notifications from './pages/Notifications'
 import Reports from './pages/Reports'
 import TicketDetails from './pages/TicketDetails'
 import Tickets from './pages/Tickets'
+import Users from './pages/Users'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -190,6 +191,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/knowledge-base" element={<KnowledgeBase />} />
+        <Route path="/users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

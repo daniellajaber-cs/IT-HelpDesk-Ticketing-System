@@ -11,5 +11,11 @@ namespace backend.Models
         public string Password { get; set; } = "";
 
         public string Role { get; set; } = "Employee";
+
+        public string Department { get; set; } = "";
+
+        public bool IsActive { get; set; } = true;
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

@@ -1,4 +1,3 @@
-
 using backend.Data;
 using backend.DTOs;
 using backend.Models;
@@ -31,7 +30,9 @@ namespace backend.Controllers
                 FullName = registerDto.FullName,
                 Email = registerDto.Email,
                 Password = registerDto.Password,
-                Role = registerDto.Role
+                Role = registerDto.Role,
+                IsActive = true,
+                CreatedAt = DateTime.Now
             };
 
             var existingUser = _context.Users.FirstOrDefault(u => u.Email == user.Email);
@@ -48,27 +49,32 @@ namespace backend.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login(LoginDto loginDto)
-        {
-            var user = _context.Users.FirstOrDefault(u =>
-                u.Email == loginDto.Email &&
-                u.Password == loginDto.Password);
+public IActionResult Login(LoginDto loginDto)
+{
+    var user = _context.Users.FirstOrDefault(u =>
+        u.Email == loginDto.Email &&
+        u.Password == loginDto.Password);
 
-            if (user == null)
-            {
-                return Unauthorized("Invalid email or password");
-            }
+    if (user == null)
+    {
+        return Unauthorized("Invalid email or password");
+    }
 
-            string token = CreateToken(user);
+    if (!user.IsActive)
+    {
+        return Unauthorized("This account has been deactivated.");
+    }
 
-            return Ok(new
-            {
-                userId = user.Id,
-                fullName = user.FullName,
-                role = user.Role,
-                token = token
-            });
-        }
+    string token = CreateToken(user);
+
+    return Ok(new
+    {
+        userId = user.Id,
+        fullName = user.FullName,
+        role = user.Role,
+        token = token
+    });
+}
 
         private string CreateToken(User user)
         {

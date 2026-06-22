@@ -39,6 +39,8 @@ namespace backend.Data
 
         public DbSet<KnowledgeBaseVideo> KnowledgeBaseVideos { get; set; }
 
+        public DbSet<SystemSetting> SystemSettings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

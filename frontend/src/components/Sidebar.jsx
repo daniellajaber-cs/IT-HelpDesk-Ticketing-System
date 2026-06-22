@@ -19,7 +19,7 @@ const menuItems = [
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Knowledge Base', icon: BookOpen, to: '/knowledge-base' },
   { label: 'Users', icon: Users, to: '/users' },
-  { label: 'Settings', icon: Settings, to: '#' },
+  { label: 'Settings', icon: Settings, to: '/settings' },
 ]
 
 const roleMenuItems = {
@@ -33,9 +33,9 @@ const roleMenuItems = {
     'Users',
     'Settings',
   ],
-  Manager: ['Dashboard', 'Tickets', 'Reports', 'Notifications', 'Knowledge Base'],
-  'IT Support Agent': ['Dashboard', 'Assigned Tickets', 'Notifications', 'Knowledge Base'],
-  Employee: ['Dashboard', 'My Tickets', 'Create Ticket', 'Notifications', 'Knowledge Base'],
+  Manager: ['Dashboard', 'Tickets', 'Reports', 'Notifications', 'Knowledge Base', 'Settings'],
+  'IT Support Agent': ['Dashboard', 'Assigned Tickets', 'Notifications', 'Knowledge Base', 'Settings'],
+  Employee: ['Dashboard', 'My Tickets', 'Create Ticket', 'Notifications', 'Knowledge Base', 'Settings'],
 }
 
 const labelOverrides = {

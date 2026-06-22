@@ -1,6 +1,7 @@
-import { Bell, Moon, Search, UserCircle } from 'lucide-react'
+import { Bell, Moon, Search, Sun, UserCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from './ThemeContext'
 
 const API_BASE_URL = 'http://localhost:5227/api'
 
@@ -10,6 +11,7 @@ function Navbar() {
   const role = localStorage.getItem('role') || 'IT Director'
   const userId = localStorage.getItem('userId')
   const [unreadCount, setUnreadCount] = useState(0)
+  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     function handleUnreadCountChange(event) {
@@ -56,8 +58,8 @@ function Navbar() {
           <Bell size={20} strokeWidth={2} />
           {unreadCount > 0 && <span className="navbar-notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
         </button>
-        <button className="icon-button" type="button" aria-label="Dark mode">
-          <Moon size={20} strokeWidth={2} />
+        <button className="icon-button theme-toggle-button" type="button" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={toggleTheme}>
+          {theme === 'dark' ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}
         </button>
 
         <div className="profile-section">

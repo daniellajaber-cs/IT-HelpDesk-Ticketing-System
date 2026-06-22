@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
 import CreateTicket from './pages/CreateTicket'
@@ -10,6 +10,8 @@ import Reports from './pages/Reports'
 import TicketDetails from './pages/TicketDetails'
 import Tickets from './pages/Tickets'
 import Users from './pages/Users'
+import Settings from './pages/Settings'
+import { ThemeContext } from './components/ThemeContext'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -177,7 +179,18 @@ function LoginPage() {
 }
 
 function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('supportops-theme') === 'dark' ? 'dark' : 'light')
+
+  useEffect(() => {
+    document.body.classList.remove('light-theme', 'dark-theme')
+    document.body.classList.add(`${theme}-theme`)
+    localStorage.setItem('supportops-theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme((current) => current === 'dark' ? 'light' : 'dark')
+
   return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LoginPage />} />
@@ -192,9 +205,11 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/knowledge-base" element={<KnowledgeBase />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ThemeContext.Provider>
   )
 }
 

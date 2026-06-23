@@ -3,6 +3,7 @@ using backend.DTOs;
 using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using backend.Services;
 
 namespace backend.Controllers
 {
@@ -29,11 +30,13 @@ namespace backend.Controllers
 
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly EmailService _emailService;
 
-        public TicketsController(AppDbContext context, IWebHostEnvironment environment)
+        public TicketsController(AppDbContext context, IWebHostEnvironment environment, EmailService emailService)
         {
             _context = context;
             _environment = environment;
+            _emailService = emailService;
         }
 
         [HttpGet]
@@ -116,6 +119,8 @@ namespace backend.Controllers
             ticket.StatusId = request.StatusId;
             ticket.UpdatedAt = DateTime.Now;
 
+
+
             _context.SaveChanges();
 
             return Ok(ticket);
@@ -157,6 +162,53 @@ namespace backend.Controllers
     ticket.Id,
     "Ticket Assigned",
     $"Ticket {ticket.TicketNumber} has been assigned to you."
+);
+
+
+string emailToSend = string.IsNullOrWhiteSpace(newAssignedUser.NotificationEmail)
+    ? newAssignedUser.Email
+    : newAssignedUser.NotificationEmail;
+
+_emailService.SendEmail(
+    emailToSend,
+    $"SupportOps - Ticket Assigned: {ticket.TicketNumber}",
+    $@"
+    <div style='font-family: Arial, sans-serif; background-color:#f4f7fb; padding:30px;'>
+        <div style='max-width:650px; margin:auto; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e5e7eb;'>
+
+            <div style='background-color:#2563eb; color:white; padding:22px 28px;'>
+                <h1 style='margin:0; font-size:24px;'>SupportOps</h1>
+                <p style='margin:6px 0 0; font-size:14px;'>Enterprise IT Help Desk</p>
+            </div>
+
+            <div style='padding:28px; color:#111827;'>
+                <h2 style='margin-top:0; color:#111827;'>Ticket Assigned</h2>
+
+                <p>Hello <strong>{newAssignedUser.FullName}</strong>,</p>
+
+                <p>A support ticket has been assigned to you. Please review the details below and begin working on it when possible.</p>
+
+                <div style='background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:18px; margin:22px 0;'>
+                    <p style='margin:8px 0;'><strong>Ticket Number:</strong> {ticket.TicketNumber}</p>
+                    <p style='margin:8px 0;'><strong>Title:</strong> {ticket.Title}</p>
+                    <p style='margin:8px 0;'><strong>Description:</strong> {ticket.Description}</p>
+                    <p style='margin:8px 0;'><strong>Status:</strong> Assigned</p>
+                </div>
+
+                <a href='http://localhost:5173/tickets/{ticket.Id}'
+                   style='display:inline-block; background-color:#2563eb; color:white; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:bold;'>
+                   View Ticket
+                </a>
+
+                <p style='margin-top:28px;'>Regards,<br/><strong>SupportOps Team</strong></p>
+            </div>
+
+            <div style='background-color:#f9fafb; color:#6b7280; font-size:12px; padding:16px 28px; text-align:center;'>
+                This is an automated email from SupportOps. Please do not reply.
+            </div>
+        </div>
+    </div>
+    "
 );
             ticket.UpdatedAt = DateTime.Now;
 
@@ -235,7 +287,59 @@ if (ticket.AssignedToUserId != null)
         $"Ticket {ticket.TicketNumber} status changed from {oldStatus?.Name ?? "Unknown"} to {status.Name}."
     );
 }
-            _context.SaveChanges();
+
+var ticketCreator = _context.Users.FirstOrDefault(u => u.Id == ticket.CreatedByUserId);
+
+if (ticketCreator != null)
+{
+    string creatorEmailToSend = string.IsNullOrWhiteSpace(ticketCreator.NotificationEmail)
+        ? ticketCreator.Email
+        : ticketCreator.NotificationEmail;
+
+    _emailService.SendEmail(
+        creatorEmailToSend,
+        $"SupportOps - Ticket Status Updated: {ticket.TicketNumber}",
+        $@"
+        <div style='font-family: Arial, sans-serif; background-color:#f4f7fb; padding:30px;'>
+            <div style='max-width:650px; margin:auto; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e5e7eb;'>
+
+                <div style='background-color:#2563eb; color:white; padding:22px 28px;'>
+                    <h1 style='margin:0; font-size:24px;'>SupportOps</h1>
+                    <p style='margin:6px 0 0; font-size:14px;'>Enterprise IT Help Desk</p>
+                </div>
+
+                <div style='padding:28px; color:#111827;'>
+                    <h2 style='margin-top:0;'>Ticket Status Updated</h2>
+
+                    <p>Hello <strong>{ticketCreator.FullName}</strong>,</p>
+
+                    <p>Your support ticket status has been updated.</p>
+
+                    <div style='background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:18px; margin:22px 0;'>
+                        <p><strong>Ticket Number:</strong> {ticket.TicketNumber}</p>
+                        <p><strong>Title:</strong> {ticket.Title}</p>
+                        <p><strong>Old Status:</strong> {oldStatus?.Name ?? "Unknown"}</p>
+                        <p><strong>New Status:</strong> {status.Name}</p>
+                    </div>
+
+                    <a href='http://localhost:5173/tickets/{ticket.Id}'
+                       style='display:inline-block; background-color:#2563eb; color:white; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:bold;'>
+                       View Ticket
+                    </a>
+
+                    <p style='margin-top:28px;'>Regards,<br/><strong>SupportOps Team</strong></p>
+                </div>
+
+                <div style='background-color:#f9fafb; color:#6b7280; font-size:12px; padding:16px 28px; text-align:center;'>
+                    This is an automated email from SupportOps. Please do not reply.
+                </div>
+            </div>
+        </div>
+        "
+    );
+}
+
+_context.SaveChanges();
 
             return Ok(ticket);
         }

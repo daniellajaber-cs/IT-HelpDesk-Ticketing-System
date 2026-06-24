@@ -10,6 +10,10 @@ namespace backend.Models
 
 
  public string NotificationEmail { get; set; } = "";
+
+ public string? ResetCode { get; set; }
+
+public DateTime? ResetCodeExpiry { get; set; }
         public string Password { get; set; } = "";
 
         public string Role { get; set; } = "Employee";

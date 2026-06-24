@@ -1,11 +1,19 @@
 import { BookOpen, Bot, CircleHelp, Clock3, Edit3, ExternalLink, FileText, Laptop, LockKeyhole, Network, Play, Plus, Search, ShieldCheck, Terminal, Trash2, UsersRound, Video, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
 const API_BASE_URL = 'http://localhost:5227/api'
 const quickSearches = ['VPN', 'Password Reset', 'Outlook', 'MFA', 'Laptop', 'Phishing']
 const categoryIcons = { lock: LockKeyhole, network: Network, terminal: Terminal, laptop: Laptop, shield: ShieldCheck, users: UsersRound }
+const stopWords = new Set(['i', 'have', 'an', 'a', 'the', 'in', 'my', 'it', 'is', 'are', 'can', 'cant', 'cannot', 'to', 'for', 'with', 'of', 'on', 'and', 'or', 'this', 'that', 'issue', 'problem'])
+const itKeywords = new Set(['email', 'outlook', 'password', 'login', 'access', 'vpn', 'wifi', 'internet', 'network', 'laptop', 'keyboard', 'screen', 'phishing', 'mfa', 'account', 'printer', 'software'])
+const keywordSynonyms = {
+  email: ['outlook', 'mail', 'inbox'], outlook: ['email', 'mail', 'inbox'],
+  login: ['password', 'account', 'permission'], access: ['password', 'account', 'permission'], password: ['login', 'access', 'account', 'permission'], account: ['login', 'access', 'password', 'permission'],
+  vpn: ['network', 'connection'], wifi: ['network'], internet: ['network'], phishing: ['security', 'suspicious email'],
+  laptop: ['hardware'], screen: ['hardware'], keyboard: ['hardware'],
+}
 
 const getTags = (tags) => (Array.isArray(tags) ? tags : String(tags || '').split(',')).map((tag) => tag.trim()).filter(Boolean)
 const preview = (value, length = 135) => { const text = String(value || '').trim(); return text.length > length ? `${text.slice(0, length).trim()}…` : text || 'No preview available.' }
@@ -26,8 +34,23 @@ const getTroubleshootingSteps = (content) => String(content || '')
   ?.map((sentence) => sentence.trim())
   .filter(Boolean)
   .slice(0, 5) || []
+const tokenize = (value) => String(value || '').toLowerCase().replace(/wi-fi/g, 'wifi').replace(/can't/g, 'cannot').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+const extractKnowledgeKeywords = (question) => [...new Set(tokenize(question).filter((word) => !stopWords.has(word) && itKeywords.has(word)))]
+const expandKeywords = (keywords) => [...new Set(keywords.flatMap((keyword) => [keyword, ...(keywordSynonyms[keyword] || [])]))]
+const hasKeyword = (text, keyword) => tokenize(text).includes(keyword) || String(text || '').toLowerCase().includes(keyword)
+const rankKnowledgeArticles = (articles, categories, question) => {
+  const keywords = expandKeywords(extractKnowledgeKeywords(question))
+  if (!keywords.length) return []
+  const categoriesById = new Map(categories.map((category) => [Number(category.id), category.name || '']))
+  return articles.map((article) => {
+    const category = categoriesById.get(Number(article.categoryId)) || ''
+    const score = keywords.reduce((total, keyword) => total + (hasKeyword(article.title, keyword) ? 12 : 0) + (hasKeyword(category, keyword) ? 6 : 0) + (hasKeyword(article.content, keyword) ? 3 : 0), 0)
+    return { article, score }
+  }).filter(({ score }) => score > 0).sort((left, right) => right.score - left.score || String(left.article.title).localeCompare(String(right.article.title))).map(({ article }) => article)
+}
 
 function KnowledgeBase() {
+  const navigate = useNavigate()
   const role = localStorage.getItem('role') || 'Employee'
   const isAdmin = role === 'Admin'
   const [categories, setCategories] = useState([])
@@ -84,6 +107,39 @@ function KnowledgeBase() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!aiOpen) return undefined
+
+    const updateTicketButtons = () => {
+      document.querySelectorAll('.knowledge-base-ai-feedback button').forEach((button) => {
+        if (button.textContent.includes('I still need help')) {
+          button.textContent = 'Create Support Ticket'
+        }
+      })
+    }
+    const handleTicketButtonClick = (event) => {
+      const button = event.target.closest('.knowledge-base-ai-feedback button')
+      if (!button || button.textContent !== 'Create Support Ticket') return
+
+      const question = button.closest('.knowledge-base-ai-message-group')?.querySelector('.knowledge-base-ai-user-message')?.textContent?.trim()
+      if (!question) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setAiOpen(false)
+      navigate('/create-ticket', { state: { aiProblemText: question } })
+    }
+
+    updateTicketButtons()
+    const observer = new MutationObserver(updateTicketButtons)
+    observer.observe(document.body, { childList: true, subtree: true })
+    document.addEventListener('click', handleTicketButtonClick, true)
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('click', handleTicketButtonClick, true)
+    }
+  }, [aiOpen, navigate])
+
   async function runSearch(value) {
     const keyword = String(value || '').trim()
     setSearchText(keyword)
@@ -120,11 +176,12 @@ function KnowledgeBase() {
     const question = aiQuestion.trim()
     if (!question) return
     const messageId = `${Date.now()}-${question}`
+    window.sessionStorage.setItem('knowledgeBaseTicketProblem', question)
     setAiMessages((messages) => [...messages, { id: messageId, question, isLoading: true, articles: null }])
     setAiQuestion('')
     try {
-      const data = await request(`articles/search?keyword=${encodeURIComponent(question)}`)
-      setAiMessages((messages) => messages.map((message) => message.id === messageId ? { ...message, isLoading: false, articles: Array.isArray(data) ? data : [] } : message))
+      const articles = rankKnowledgeArticles(allArticles, categories, question)
+      setAiMessages((messages) => messages.map((message) => message.id === messageId ? { ...message, isLoading: false, articles } : message))
     } catch (error) {
       console.log(error)
       setAiMessages((messages) => messages.map((message) => message.id === messageId ? { ...message, isLoading: false, articles: [] } : message))
@@ -186,7 +243,7 @@ function KnowledgeBase() {
       <section className="knowledge-base-video-section"><div className="knowledge-base-section-heading"><div><h3>Video Guides</h3><p>Quick walkthroughs for common IT tasks.</p></div><Video size={19} /></div><div className="knowledge-base-video-grid">{videos.length ? videos.map((video) => { const thumbnailUrl = getYouTubeThumbnail(video.youTubeUrl); const cardBackground = thumbnailUrl ? `linear-gradient(180deg, rgba(10,18,34,.12), rgba(10,18,34,.15) 42%, rgba(10,18,34,.9)), url(${thumbnailUrl})` : 'linear-gradient(135deg, #172b4d, #0f172a 58%, #1d4ed8)'; return <div className="knowledge-base-video-card" key={video.id} style={{ backgroundImage: cardBackground, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}><a href={video.youTubeUrl} target="_blank" rel="noreferrer" aria-label={`Watch ${video.title}`}><span className="knowledge-base-video-play"><Play size={20} fill="currentColor" /></span><span className="knowledge-base-video-category">{categoryName(video.categoryId)}</span><h4 title={video.title}>{video.title}</h4><span className="knowledge-base-video-duration">{video.duration || 'Video'} <ExternalLink size={11} /></span></a>{isAdmin && <div className="knowledge-base-card-actions"><button type="button" aria-label={`Edit ${video.title}`} onClick={() => openEditor('video', video)}><Edit3 size={13} /></button><button type="button" aria-label={`Delete ${video.title}`} onClick={() => deleteItem('video', video.id)}><Trash2 size={13} /></button></div>}</div> }) : <div className="knowledge-base-empty">No video guides available yet.</div>}</div></section>
     </>}
     {articleModal && <ArticleModal article={articleModal} categoryName={categoryName} isAdmin={isAdmin} onClose={() => setArticleModal(null)} onEdit={() => openEditor('article', articleModal)} onDelete={() => deleteItem('article', articleModal.id)} onTogglePublish={() => togglePublish(articleModal)} />}
-    {aiOpen && <AiModal question={aiQuestion} setQuestion={setAiQuestion} messages={aiMessages} feedback={aiFeedback} onFeedback={(messageId, value) => setAiFeedback((current) => ({ ...current, [messageId]: value }))} onSubmit={runAiSearch} onClose={() => { setAiOpen(false); setAiMessages([]); setAiQuestion(''); setAiFeedback({}) }} onOpenArticle={openArticle} categoryName={categoryName} />}
+    {aiOpen && <AiModal question={aiQuestion} setQuestion={setAiQuestion} messages={aiMessages} feedback={aiFeedback} onFeedback={(messageId, value) => setAiFeedback((current) => ({ ...current, [messageId]: value }))} onSubmit={runAiSearch} onClose={() => { setAiOpen(false); setAiMessages([]); setAiQuestion(''); setAiFeedback({}) }} onOpenArticle={openArticle} onCreateTicket={(question) => { setAiOpen(false); navigate('/create-ticket', { state: { aiProblemText: question } }) }} categoryName={categoryName} />}
     {editor && <EditorModal editor={editor} categories={categories} saving={isSaving} onClose={() => setEditor(null)} onSubmit={submitEditor} />}
   </div></DashboardLayout>
 }

@@ -4,6 +4,7 @@ import './App.css'
 import CreateTicket from './pages/CreateTicket'
 import Dashboard from './pages/Dashboard'
 import EditTicket from './pages/EditTicket'
+import ForgotPassword from './pages/ForgotPassword'
 import KnowledgeBase from './pages/KnowledgeBase'
 import Notifications from './pages/Notifications'
 import Reports from './pages/Reports'
@@ -15,8 +16,9 @@ import { ThemeContext } from './components/ThemeContext'
 
 function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => localStorage.getItem('supportops-remember-email') || '')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('supportops-remember-email')))
 
   const stats = [
     { value: '99.9%', label: 'SLA Uptime' },
@@ -40,6 +42,12 @@ function LoginPage() {
 
       if (response.ok) {
         const data = await response.json()
+
+        if (rememberMe) {
+          localStorage.setItem('supportops-remember-email', email)
+        } else {
+          localStorage.removeItem('supportops-remember-email')
+        }
 
         localStorage.setItem('userId', data.userId)
         localStorage.setItem('fullName', data.fullName)
@@ -126,11 +134,11 @@ function LoginPage() {
 
             <div className="form-options">
               <label className="remember-option" htmlFor="remember">
-                <input id="remember" name="remember" type="checkbox" />
+                <input id="remember" name="remember" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                 <span>Remember me</span>
               </label>
 
-              <a href="/">Forgot password?</a>
+              <a href="/forgot-password">Forgot password?</a>
             </div>
 
             <button className="sign-in-button" type="submit">
@@ -195,6 +203,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tickets" element={<Tickets />} />

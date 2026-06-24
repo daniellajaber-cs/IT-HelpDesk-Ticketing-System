@@ -320,6 +320,18 @@ form {
   white-space: nowrap;
 }
 
+.auth-message {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.auth-message.success { border: 1px solid #a7e7c4; background: #ecfdf3; color: #027a48; }
+.auth-message.error { border: 1px solid #fecaca; background: #fef2f2; color: #b42318; }
+.forgot-password-note { margin: 20px 0 0; color: #667085; font-size: 13px; line-height: 1.5; }
+
 .sign-in-button,
 .google-button {
   width: 100%;
@@ -1404,6 +1416,130 @@ form {
   width: 95%;
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.ai-ticket-assistant-card {
+  margin-bottom: 18px;
+  padding: 22px;
+  border: 1px solid #dbe7fb;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(16, 24, 40, 0.05);
+}
+
+.ai-ticket-assistant-heading h3,
+.ai-ticket-suggestion h4 {
+  margin: 0;
+  color: #172033;
+}
+
+.ai-ticket-assistant-heading p {
+  margin: 6px 0 16px;
+  color: #667085;
+  font-size: 14px;
+}
+
+.ai-ticket-assistant-card > label {
+  display: block;
+  margin-bottom: 6px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ai-ticket-assistant-card textarea {
+  width: 100%;
+  min-height: 106px;
+  padding: 12px;
+  border: 1px solid #d8e0ec;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+}
+
+.ai-ticket-assistant-card textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.ai-analyze-button,
+.ai-use-suggestion-button {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #2563eb;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.ai-analyze-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.ai-ticket-suggestion {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.ai-ticket-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ai-ticket-suggestion-grid > div {
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-ticket-suggestion-grid span,
+.ai-ticket-suggestion-grid strong {
+  display: block;
+}
+
+.ai-ticket-suggestion-grid span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-ticket-suggestion-grid strong {
+  margin-top: 4px;
+  color: #172033;
+  font-size: 13px;
+}
+
+.ai-ticket-suggestion-grid .ai-ticket-reason {
+  grid-column: 1 / -1;
+}
+
+.ai-ticket-message {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ai-ticket-message.error {
+  border-color: #fecaca;
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.ai-ticket-message.warning {
+  border-color: #fde68a;
+  color: #92400e;
+  background: #fffbeb;
 }
 
 .notifications-page {

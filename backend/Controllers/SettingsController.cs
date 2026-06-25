@@ -1,6 +1,6 @@
 using backend.Data;
 using Microsoft.AspNetCore.Mvc;
-
+using backend.Services;
 namespace backend.Controllers
 {
     [ApiController]
@@ -8,10 +8,12 @@ namespace backend.Controllers
     public class SettingsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly PasswordService _passwordService;
 
-        public SettingsController(AppDbContext context)
+        public SettingsController(AppDbContext context, PasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
         [HttpGet("profile/{userId}")]
@@ -65,17 +67,17 @@ namespace backend.Controllers
                 return NotFound("User not found");
             }
 
-            if (user.Password != request.CurrentPassword)
-            {
-                return BadRequest("Current password is incorrect.");
-            }
+          if (!_passwordService.VerifyPassword(user, request.CurrentPassword))
+{
+    return BadRequest("Current password is incorrect.");
+}
 
             if (request.NewPassword != request.ConfirmPassword)
             {
                 return BadRequest("New password and confirmation do not match.");
             }
 
-            user.Password = request.NewPassword;
+            user.Password = _passwordService.HashPassword(user, request.NewPassword);
             _context.SaveChanges();
 
             return Ok("Password changed successfully.");

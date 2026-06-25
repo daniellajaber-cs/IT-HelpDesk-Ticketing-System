@@ -18,12 +18,14 @@ namespace backend.Controllers
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly EmailService _emailService;
+        private readonly PasswordService _passwordService;
 
-   public AuthController(AppDbContext context, IConfiguration configuration, EmailService emailService)
+   public AuthController(AppDbContext context, IConfiguration configuration, EmailService emailService, PasswordService passwordService)
 {
     _context = context;
     _configuration = configuration;
     _emailService = emailService;
+    _passwordService = passwordService;
 }
 
         [HttpPost("register")]
@@ -33,11 +35,13 @@ namespace backend.Controllers
             {
                 FullName = registerDto.FullName,
                 Email = registerDto.Email,
-                Password = registerDto.Password,
+                Password = " ",
+               
                 Role = registerDto.Role,
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
+             user.Password = _passwordService.HashPassword(user, registerDto.Password);
 
             var existingUser = _context.Users.FirstOrDefault(u => u.Email == user.Email);
 
@@ -52,14 +56,17 @@ namespace backend.Controllers
             return Ok("User registered successfully");
         }
 
-        [HttpPost("login")]
+[HttpPost("login")]
 public IActionResult Login(LoginDto loginDto)
 {
-    var user = _context.Users.FirstOrDefault(u =>
-        u.Email == loginDto.Email &&
-        u.Password == loginDto.Password);
+    var user = _context.Users.FirstOrDefault(u => u.Email == loginDto.Email);
 
     if (user == null)
+    {
+        return Unauthorized("Invalid email or password");
+    }
+
+    if (!_passwordService.VerifyPassword(user, loginDto.Password))
     {
         return Unauthorized("Invalid email or password");
     }
@@ -175,13 +182,34 @@ public IActionResult ResetPassword(ResetPasswordDto resetPasswordDto)
         return BadRequest("Passwords do not match.");
     }
 
-    user.Password = resetPasswordDto.NewPassword;
+    user.Password = _passwordService.HashPassword(user, resetPasswordDto.NewPassword);
     user.ResetCode = null;
     user.ResetCodeExpiry = null;
 
     _context.SaveChanges();
 
     return Ok("Password reset successfully.");
+}
+
+[HttpPost("hash-existing-passwords")]
+public IActionResult HashExistingPasswords()
+{
+    var users = _context.Users.ToList();
+
+    int updatedCount = 0;
+
+    foreach (var user in users)
+    {
+        if (_passwordService.IsPlainTextPassword(user.Password))
+        {
+            user.Password = _passwordService.HashPassword(user, user.Password);
+            updatedCount++;
+        }
+    }
+
+    _context.SaveChanges();
+
+    return Ok($"{updatedCount} user passwords were successfully hashed.");
 }
         private string CreateToken(User user)
         {

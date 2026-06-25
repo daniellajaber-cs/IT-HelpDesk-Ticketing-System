@@ -12,19 +12,18 @@ namespace backend.Services
             return _passwordHasher.HashPassword(user, password);
         }
 
-        public bool VerifyPassword(User user, string password)
-        {
-            var result = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
+      public bool VerifyPassword(User user, string password)
+{
+    if (IsPlainTextPassword(user.Password))
+    {
+        return user.Password == password;
+    }
 
-            if (result == PasswordVerificationResult.Success ||
-                result == PasswordVerificationResult.SuccessRehashNeeded)
-            {
-                return true;
-            }
+    var result = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
 
-            // Temporary support for old plain-text passwords
-            return user.Password == password;
-        }
+    return result == PasswordVerificationResult.Success ||
+           result == PasswordVerificationResult.SuccessRehashNeeded;
+}
 
         public bool IsPlainTextPassword(string password)
         {

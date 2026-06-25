@@ -2,6 +2,7 @@ using backend.Data;
 using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using backend.Services;
 namespace backend.Controllers
 {
     [ApiController]
@@ -9,10 +10,12 @@ namespace backend.Controllers
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly PasswordService _passwordService;
 
-        public UsersController(AppDbContext context)
+        public UsersController(AppDbContext context, PasswordService passwordService)
         {
             _context = context;
+            _passwordService = passwordService;
         }
 
  [HttpGet]
@@ -95,7 +98,7 @@ public IActionResult UpdateUser(int id, User updatedUser)
 
     if (!string.IsNullOrWhiteSpace(updatedUser.Password))
     {
-        user.Password = updatedUser.Password;
+        user.Password = _passwordService.HashPassword(user, updatedUser.Password);
     }
 
     _context.SaveChanges();

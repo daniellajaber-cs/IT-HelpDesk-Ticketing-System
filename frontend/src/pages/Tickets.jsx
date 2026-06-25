@@ -5,6 +5,8 @@ import DashboardLayout from '../components/DashboardLayout'
 
 const API_BASE_URL = 'http://localhost:5227/api'
 const PAGE_SIZE = 7
+const NEW_TICKET_WINDOW_MS = 5 * 60 * 1000
+const NEW_TICKET_REFRESH_MS = 60 * 1000
 
 function Tickets() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ function Tickets() {
   const [agentFilter, setAgentFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [openActionsTicketId, setOpenActionsTicketId] = useState(null)
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/Tickets`)
@@ -64,6 +67,16 @@ function Tickets() {
     }
   }, [])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now())
+    }, NEW_TICKET_REFRESH_MS)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [])
+
   function getLookupName(items, id, fallbackLabel) {
     const item = items.find((lookupItem) => lookupItem.id === id)
     return item ? item.name : fallbackLabel
@@ -71,6 +84,10 @@ function Tickets() {
 
   function getTicketId(ticket) {
     return ticket.ticketNumber || `TCK-${ticket.id}`
+  }
+
+  function getCreatedAt(ticket) {
+    return ticket.createdAt ?? ticket.CreatedAt
   }
 
   function getTitle(ticket) {
@@ -139,6 +156,19 @@ function Tickets() {
     return new Date(value).toLocaleDateString()
   }
 
+  function getCreatedAtTime(ticket) {
+    const createdAt = getCreatedAt(ticket)
+    const createdAtTime = createdAt ? new Date(createdAt).getTime() : 0
+
+    return Number.isNaN(createdAtTime) ? 0 : createdAtTime
+  }
+
+  function isNewTicket(ticket) {
+    const createdAtTime = getCreatedAtTime(ticket)
+
+    return createdAtTime > 0 && currentTime - createdAtTime < NEW_TICKET_WINDOW_MS
+  }
+
   function getBadgeClass(value) {
     return value.toLowerCase().replaceAll(' ', '-')
   }
@@ -192,14 +222,16 @@ function Tickets() {
     categories.length > 0 ? categories.map((category) => category.name) : [...new Set(roleTickets.map(getCategory))]
   const agentOptions = [...new Set(roleTickets.map((ticket) => getAgent(ticket)).filter(Boolean))]
 
-  const filteredTickets = roleTickets.filter((ticket) => {
-    const matchesStatus = !statusFilter || getStatus(ticket) === statusFilter
-    const matchesPriority = !priorityFilter || getPriority(ticket) === priorityFilter
-    const matchesCategory = !categoryFilter || getCategory(ticket) === categoryFilter
-    const matchesAgent = !agentFilter || getAgent(ticket) === agentFilter
+  const filteredTickets = roleTickets
+    .filter((ticket) => {
+      const matchesStatus = !statusFilter || getStatus(ticket) === statusFilter
+      const matchesPriority = !priorityFilter || getPriority(ticket) === priorityFilter
+      const matchesCategory = !categoryFilter || getCategory(ticket) === categoryFilter
+      const matchesAgent = !agentFilter || getAgent(ticket) === agentFilter
 
-    return matchesStatus && matchesPriority && matchesCategory && matchesAgent
-  })
+      return matchesStatus && matchesPriority && matchesCategory && matchesAgent
+    })
+    .sort((firstTicket, secondTicket) => getCreatedAtTime(secondTicket) - getCreatedAtTime(firstTicket))
 
   const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE))
   const activePage = Math.min(currentPage, totalPages)
@@ -360,7 +392,10 @@ function Tickets() {
 
                   return (
                     <tr key={ticket.id}>
-                      <td className="queue-ticket-id">{getTicketId(ticket)}</td>
+                      <td className="queue-ticket-id">
+                        <span>{getTicketId(ticket)}</span>
+                        {isNewTicket(ticket) && <span className="queue-new-ticket-badge">NEW</span>}
+                      </td>
                       <td>
                         <strong className="queue-ticket-title">{getTitle(ticket)}</strong>
                         <span className="queue-ticket-description">{getDescription(ticket)}</span>
@@ -388,7 +423,7 @@ function Tickets() {
                           </div>
                         )}
                       </td>
-                      <td>{formatDate(ticket.createdAt)}</td>
+                      <td>{formatDate(getCreatedAt(ticket))}</td>
                       <td className="queue-actions-cell">
                         <div className="queue-actions" onClick={(e) => e.stopPropagation()}>
                           <button

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const MAX_ATTACHMENT_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_ATTACHMENT_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 const INVALID_ATTACHMENT_TYPE_MESSAGE =

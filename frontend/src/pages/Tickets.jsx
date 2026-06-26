@@ -3,7 +3,7 @@ import { MoreVertical, Plus, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const PAGE_SIZE = 7
 const NEW_TICKET_WINDOW_MS = 5 * 60 * 1000
 const NEW_TICKET_REFRESH_MS = 60 * 1000

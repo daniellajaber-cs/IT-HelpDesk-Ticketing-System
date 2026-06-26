@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const quickSearches = ['VPN', 'Password Reset', 'Outlook', 'MFA', 'Laptop', 'Phishing']
 const categoryIcons = { lock: LockKeyhole, network: Network, terminal: Terminal, laptop: Laptop, shield: ShieldCheck, users: UsersRound }
 const stopWords = new Set(['i', 'have', 'an', 'a', 'the', 'in', 'my', 'it', 'is', 'are', 'can', 'cant', 'cannot', 'to', 'for', 'with', 'of', 'on', 'and', 'or', 'this', 'that', 'issue', 'problem'])

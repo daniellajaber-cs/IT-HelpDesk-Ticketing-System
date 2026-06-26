@@ -27,7 +27,7 @@ import {
 } from 'recharts'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const categoryProgressColors = ['#2563eb', '#f97316', '#475569', '#dc2626', '#16a34a', '#7c3aed']
 
 const systemKpiConfig = [

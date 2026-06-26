@@ -20,7 +20,7 @@ import {
 } from 'recharts'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const analyticsColors = ['#2563eb', '#16a34a', '#f97316', '#7c3aed', '#475569', '#dc2626']
 
 const overviewItems = [

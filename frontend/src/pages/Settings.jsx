@@ -5,7 +5,7 @@ import {
 import { useEffect, useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const notificationDefaults = [
   ['assignments', 'Ticket assignments', 'Get notified when a ticket is assigned to you.'],
   ['statusUpdates', 'Status updates', 'Stay informed when ticket status changes.'],

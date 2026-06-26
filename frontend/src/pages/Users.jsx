@@ -14,7 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 
-const API_BASE_URL = 'http://localhost:5227/api'
+const API_BASE_URL = 'https://supportops-api-daniella-fufeejcrfgcah2bc.uaenorth-01.azurewebsites.net/api'
 const ROLES = ['Admin', 'Manager', 'IT Support Agent', 'Employee']
 const emptyForm = {
   fullName: '',
